@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { DebuffAction, EventEmitter, IProxyEvents } from "@mtgoo/ctool";
 import { IMenu } from "../comp/treeMenu";
 import React from "react";
-
+import * as Cesium from 'cesium';
 
 export interface IStore {
     chooseNodeId: string;
     hoverNodeId: string;
     editingNodeId: string;
     menu: IMenu;
+    viewer: Cesium.Viewer;
 }
 
 export function useStore<T extends IStore, P extends keyof T>(attName: P): T[P] {
@@ -89,6 +90,7 @@ export const store = ObservableData.create<IStore>(
         chooseNodeId: null,
         hoverNodeId: null,
         editingNodeId: null,
+        viewer: null,
         menu: {
             beActive: false,
             options: [],

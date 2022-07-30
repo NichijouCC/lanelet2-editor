@@ -65,7 +65,7 @@ export class RoadData implements IRoadData {
     constructor(map: MapData) {
         this._map = map;
         this.id = UUID.create_v4();
-        this.name = "新车道";
+        this.name = "车道_" + (map.roads.length + 1);
         this.edges = [];
         this.points = [];
     }
@@ -92,7 +92,7 @@ export class EdgeData {
     constructor(type: "left" | "right", road: RoadData) {
         this._road = road;
         this.type = type;
-        this.name = "新边界";
+        this.name = (type == "left" ? "左边界_" : "右边界_") + (road.edges.filter(el => el.type == type).length + 1);
         this.id = UUID.create_v4()
     }
 
@@ -109,7 +109,7 @@ export class AreaData implements IAreaData {
     constructor(map: MapData) {
         this._map = map;
         this.id = UUID.create_v4();
-        this.name = "新区域";
+        this.name = "区域_" + (map.areas.length + 1);
     }
 
     dispose() {

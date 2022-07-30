@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { TreeMenu, IMenuOption } from "./treeMenu";
-import { store, useStore } from "../data/store";
-import { MapData, IRoadData, RoadData, AreaData, IRoadBorderData, EdgeData } from "../data/mapData";
+import { store } from "../data/store";
+import { MapData, RoadData, AreaData, EdgeData } from "../data/mapData";
 import { RightOutlined, DownOutlined } from "@ant-design/icons"
 import { Input } from "antd";
 
@@ -15,7 +15,7 @@ export class TreeComp extends React.Component<{ data: MapData; }> {
     }
 
     componentDidMount(): void {
-        this.ref_container.current.addEventListener("click", (ev) => {
+        document.addEventListener("click", (ev) => {
             if (ev.button == 0) {
                 if (store.menu.beActive) {
                     store.menu = { beActive: false } as any;
@@ -26,7 +26,7 @@ export class TreeComp extends React.Component<{ data: MapData; }> {
                 }
             }
         });
-        this.ref_container.current.addEventListener("contextmenu", (ev) => {
+        document.addEventListener("contextmenu", (ev) => {
             if (ev.button == 0) {
                 if (store.menu.beActive) {
                     store.menu = { beActive: false } as any;
@@ -57,6 +57,80 @@ export class TreeComp extends React.Component<{ data: MapData; }> {
 export interface INodeData {
     id: string;
     name: string;
+}
+
+export class NodeComp extends React.Component<{ show: boolean, layer: number, target: INodeData }, { beExpand: boolean }>{
+    private _ref_input = React.createRef<Input>();
+    constructor(props) {
+        super(props);
+        store.on("setAtt", () => this.forceUpdate())
+        this.state = {
+            beExpand: false,
+        }
+    }
+
+    render(): React.ReactNode {
+        let { layer, target, show } = this.props;
+        let { beExpand } = this.state;
+        let children = getChildren(target);
+        return <div className="node" style={{ display: show ? "block" : "none" }}>
+            <div
+                className={`node-raw ${store.chooseNodeId == target.id ? "beChoose" : ""}  ${store.hoverNodeId == target.id ? "beHover" : ""}`}
+                style={{ paddingLeft: `${layer * 15}px` }}
+                onMouseEnter={(ev) => { store.hoverNodeId = target.id; }}
+                onMouseOut={(ev) => { store.hoverNodeId = null; }}
+                onClick={(ev) => { store.chooseNodeId = target.id; }}
+                onContextMenu={(ev) => {
+                    let options = getMenuOptions(target);
+                    if (options != null) {
+                        let container = document.getElementById("tree-container")
+                        let bound = container.getBoundingClientRect();
+                        let pos = [ev.clientX - bound.left, ev.clientY - bound.top];
+                        store.menu = {
+                            beActive: true,
+                            pos,
+                            options: options.map(el => {
+                                let action = el.action
+                                el.action = () => {
+                                    action?.();
+                                    if (!this.state.beExpand) {
+                                        this.setState({ beExpand: true });
+                                    }
+                                    this.forceUpdate();
+                                };
+                                return el;
+                            })
+                        }
+                    }
+                    store.chooseNodeId = target.id;
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                }}
+            >
+                <div style={{ width: "14px" }} >
+                    {children?.length > 0 && (beExpand ? <DownOutlined onClick={(ev) => {
+                        this.setState({ beExpand: false });
+                        ev.stopPropagation();
+                    }} /> : <RightOutlined onClick={(ev) => {
+                        this.setState({ beExpand: true })
+                        ev.stopPropagation();
+                    }} />)}
+                </div>
+                <Input ref={this._ref_input} value={target.name}
+                    onChange={(ev) => {
+                        target.name = ev.target.value;
+                        this.forceUpdate();
+                        ev.stopPropagation();
+                    }}
+                    onClickCapture={(ev) => ev.stopPropagation()}
+                    style={{ display: store.editingNodeId == target.id ? "block" : "none" }} />
+                {store.editingNodeId != target.id && <div>{target.name}</div>}
+            </div>
+            {children?.length > 0 && children.map((el, index) => {
+                return <NodeComp show={beExpand} layer={layer + 1} target={el} key={index} />
+            })}
+        </div>;
+    }
 }
 
 
@@ -134,79 +208,4 @@ function getChildren(target: object) {
         return [...target.edges]
     }
     return []
-}
-
-
-export class NodeComp extends React.Component<{ show: boolean, layer: number, target: INodeData }, { beExpand: boolean }>{
-    private _ref_input = React.createRef<Input>();
-    constructor(props) {
-        super(props);
-        store.on("setAtt", () => this.forceUpdate())
-        this.state = {
-            beExpand: false,
-        }
-    }
-
-    render(): React.ReactNode {
-        let { layer, target, show } = this.props;
-        let { beExpand } = this.state;
-        let children = getChildren(target);
-        return <div className="node" style={{ display: show ? "block" : "none" }}>
-            <div
-                className={`node-raw ${store.chooseNodeId == target.id ? "beChoose" : ""}  ${store.hoverNodeId == target.id ? "beHover" : ""}`}
-                style={{ paddingLeft: `${layer * 15}px` }}
-                onMouseEnter={(ev) => { store.hoverNodeId = target.id; }}
-                onMouseOut={(ev) => { store.hoverNodeId = null; }}
-                onClick={(ev) => { store.chooseNodeId = target.id; }}
-                onContextMenu={(ev) => {
-                    let options = getMenuOptions(target);
-                    if (options != null) {
-                        let container = document.getElementById("tree-container")
-                        let bound = container.getBoundingClientRect();
-                        let pos = [ev.clientX - bound.left, ev.clientY - bound.top];
-                        store.menu = {
-                            beActive: true,
-                            pos,
-                            options: options.map(el => {
-                                let action = el.action
-                                el.action = () => {
-                                    action?.();
-                                    if (!this.state.beExpand) {
-                                        this.setState({ beExpand: true });
-                                    }
-                                    this.forceUpdate();
-                                };
-                                return el;
-                            })
-                        }
-                    }
-                    store.chooseNodeId = target.id;
-                    ev.stopPropagation();
-                    ev.preventDefault();
-                }}
-            >
-                <div style={{ width: "14px" }} >
-                    {children?.length > 0 && (beExpand ? <DownOutlined onClick={(ev) => {
-                        this.setState({ beExpand: false });
-                        ev.stopPropagation();
-                    }} /> : <RightOutlined onClick={(ev) => {
-                        this.setState({ beExpand: true })
-                        ev.stopPropagation();
-                    }} />)}
-                </div>
-                <Input ref={this._ref_input} value={target.name}
-                    onChange={(ev) => {
-                        target.name = ev.target.value;
-                        this.forceUpdate();
-                        ev.stopPropagation();
-                    }}
-                    onClickCapture={(ev) => ev.stopPropagation()}
-                    style={{ display: store.editingNodeId == target.id ? "block" : "none" }} />
-                {store.editingNodeId != target.id && <div>{target.name}</div>}
-            </div>
-            {children?.length > 0 && children.map((el, index) => {
-                return <NodeComp show={beExpand} layer={layer + 1} target={el} key={index} />
-            })}
-        </div>;
-    }
 }
